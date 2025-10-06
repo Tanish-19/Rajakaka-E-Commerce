@@ -1,6 +1,8 @@
-import { Link } from "react-router-dom";
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Link } from "react-router-dom"; 
 import { Menu, X, Search, ShoppingCart, User, Star, Sparkles, Headphones, LogIn, LogOut, Smartphone, Tablet, Tv, Refrigerator, Cpu } from 'lucide-react';
+import { products } from '../data/products';
 
 function AuthPopup({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -395,9 +397,9 @@ function CategorySection() {
   );
 }
 
-
-
 function ProductSection({ title, products }) {
+  const navigate = useNavigate();
+
   return (
     <div className="py-8 bg-white">
       <div className="max-w-7xl mx-auto px-4">
@@ -406,16 +408,17 @@ function ProductSection({ title, products }) {
         </div>
         <div className="bg-gray-50 rounded-b-xl p-6 shadow-md">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {products.map((product, index) => (
+            {products.map((product) => (
               <div
-                key={index}
+                key={product.id}
+                onClick={() => navigate(`/product/${product.id}`)}
                 className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all p-4 flex flex-col group cursor-pointer"
               >
                 <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
                   <img
-                    src={product.image}
+                    src={product.images[0]}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                    className="w-full h-full object-contain group-hover:scale-110 transition-transform"
                   />
                 </div>
                 <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">
@@ -423,19 +426,15 @@ function ProductSection({ title, products }) {
                 </h3>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg font-bold text-orange-600">
-                    ₹{product.price}
+                    ₹{product.price.toLocaleString()}
                   </span>
-                  {product.originalPrice && (
-                    <span className="text-sm text-gray-500 line-through">
-                      ₹{product.originalPrice}
-                    </span>
-                  )}
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{product.originalPrice.toLocaleString()}
+                  </span>
                 </div>
-                {product.discount && (
-                  <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full self-start">
-                    {product.discount}% OFF
-                  </span>
-                )}
+                <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full self-start">
+                  {product.discount}% OFF
+                </span>
               </div>
             ))}
           </div>
@@ -448,120 +447,9 @@ function ProductSection({ title, products }) {
 function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const smartphoneDeals = [
-    {
-  name: 'iPhone 15 Pro',
-  price: '124,999',
-  originalPrice: '134,999',
-  discount: 7,
-  image: 'https://res.cloudinary.com/dcdwworlp/image/upload/v1759304475/81dT7CUY6GL._UF350_350_QL80__ccviju.jpg'
-},
-
-    {
-      name: 'Samsung Galaxy S24 Ultra',
-      price: '109,999',
-      originalPrice: '124,999',
-      discount: 12,
-      image: 'https://res.cloudinary.com/dcdwworlp/image/upload/v1759305068/-original-imagx9egm9mgmvab_rtv12x.jpg'
-    },
-    {
-      name: 'OnePlus 12',
-      price: '59,999',
-      originalPrice: '69,999',
-      discount: 14,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/smartphone_3.jpg'
-    },
-    {
-      name: 'Google Pixel 8 Pro',
-      price: '89,999',
-      originalPrice: '99,999',
-      discount: 10,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/smartphone_4.jpg'
-    },
-    {
-      name: 'Xiaomi 14 Pro',
-      price: '54,999',
-      originalPrice: '64,999',
-      discount: 15,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/smartphone_5.jpg'
-    }
-  ];
-
-  const tvDeals = [
-    {
-      name: 'Samsung 55" 4K Smart TV',
-      price: '49,999',
-      originalPrice: '69,999',
-      discount: 29,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tv_1.jpg'
-    },
-    {
-      name: 'LG OLED 65" TV',
-      price: '139,999',
-      originalPrice: '179,999',
-      discount: 22,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tv_2.jpg'
-    },
-    {
-      name: 'Sony Bravia 50" 4K',
-      price: '59,999',
-      originalPrice: '79,999',
-      discount: 25,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tv_3.jpg'
-    },
-    {
-      name: 'Mi TV 43" Smart',
-      price: '24,999',
-      originalPrice: '34,999',
-      discount: 29,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tv_4.jpg'
-    },
-    {
-      name: 'OnePlus TV 55" QLED',
-      price: '44,999',
-      originalPrice: '59,999',
-      discount: 25,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tv_5.jpg'
-    }
-  ];
-
-  const tabletDeals = [
-    {
-      name: 'iPad Pro 12.9"',
-      price: '99,999',
-      originalPrice: '109,999',
-      discount: 9,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tablet_1.jpg'
-    },
-    {
-      name: 'Samsung Galaxy Tab S9',
-      price: '64,999',
-      originalPrice: '79,999',
-      discount: 19,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tablet_2.jpg'
-    },
-    {
-      name: 'iPad Air',
-      price: '54,999',
-      originalPrice: '64,999',
-      discount: 15,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tablet_3.jpg'
-    },
-    {
-      name: 'OnePlus Pad',
-      price: '34,999',
-      originalPrice: '44,999',
-      discount: 22,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tablet_4.jpg'
-    },
-    {
-      name: 'Lenovo Tab P12',
-      price: '39,999',
-      originalPrice: '49,999',
-      discount: 20,
-      image: 'https://res.cloudinary.com/demo/image/upload/w_400,h_400,c_fill/tablet_5.jpg'
-    }
-  ];
+  const smartphoneDeals = products.filter(p => p.category === 'mobiles').slice(0, 5);
+  const tvDeals = products.filter(p => p.category === 'tvs').slice(0, 5);
+  const tabletDeals = products.filter(p => p.category === 'tablets').slice(0, 5);
 
   return (
     <div className="min-h-screen bg-white">

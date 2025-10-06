@@ -1,12 +1,23 @@
 import { useState } from 'react';
-import { Menu, X, Search, ShoppingCart, User, Star, Sparkles, Headphones, LogIn, LogOut, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { products } from '../data/products'; // IMPORT: Data is now imported
+import {
+  Menu, X, Search, ShoppingCart, User, Star, Sparkles, Headphones,
+  LogIn, LogOut, SlidersHorizontal, ChevronDown, ChevronUp
+} from 'lucide-react';
 
-// AuthPopup Component: Handles user login and sign-up in a modal.
+
+// MODIFIED: Replaced with the more comprehensive AuthPopup
 function AuthPopup({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    pinCode: '',
     password: '',
     confirmPassword: ''
   });
@@ -57,18 +68,98 @@ function AuthPopup({ onClose }) {
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Email
+              Email {!isLogin && '/ Phone'}
             </label>
             <input
-              type="email"
+              type="text"
               name="email"
               value={formData.email}
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Enter your email"
+              placeholder={isLogin ? "Enter email or phone" : "Enter your email"}
             />
           </div>
+
+          {!isLogin && (
+            <>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required={!isLogin}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter your phone number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Address
+                </label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required={!isLogin}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter your address"
+                  rows="2"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required={!isLogin}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required={!isLogin}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="State"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  PIN Code
+                </label>
+                <input
+                  type="text"
+                  name="pinCode"
+                  value={formData.pinCode}
+                  onChange={handleChange}
+                  required={!isLogin}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter PIN code"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
@@ -125,6 +216,7 @@ function AuthPopup({ onClose }) {
     </div>
   );
 }
+
 
 // Sidebar Component: Provides navigation links and user actions.
 function Sidebar({ isLoggedIn, onClose, onLogout, onLoginClick }) {
@@ -373,13 +465,28 @@ function FilterSection({ maxPrice, setMaxPrice, selectedBrand, setSelectedBrand,
   );
 }
 
-// MobileCard Component: Displays individual mobile product information.
+// MODIFIED: This component now handles navigation and uses the imported product data structure.
 function MobileCard({ mobile }) {
+  const navigate = useNavigate();
+
+  const handleCardClick = () => {
+    navigate(`/product/${mobile.id}`);
+  };
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation(); // Prevents navigating when the button is clicked
+    // Add to cart logic would go here
+    console.log(`Product ${mobile.name} added to cart.`);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer flex flex-col">
+    <div
+      onClick={handleCardClick}
+      className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer flex flex-col"
+    >
       <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
         <img
-          src={mobile.image}
+          src={mobile.images[0]} // CHANGE: Uses `images` array from product data
           alt={mobile.name}
           className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-4"
         />
@@ -391,24 +498,11 @@ function MobileCard({ mobile }) {
       </div>
 
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="font-bold text-gray-800 text-lg mb-2 line-clamp-1">
+        <h3 className="font-bold text-gray-800 text-lg mb-2 line-clamp-2 h-14">
           {mobile.name}
         </h3>
 
-        <div className="space-y-1 mb-3 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Display:</span>
-            <span className="line-clamp-1">{mobile.specs.display}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">RAM:</span>
-            <span>{mobile.specs.ram}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Storage:</span>
-            <span>{mobile.specs.storage}</span>
-          </div>
-        </div>
+        {/* REMOVED: Static specs display is removed for better data flexibility */}
 
         <div className="mt-auto">
             <div className="flex items-center gap-2 mb-3">
@@ -422,8 +516,11 @@ function MobileCard({ mobile }) {
             )}
             </div>
 
-            <button className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all shadow-md">
-            Add to Cart
+            <button
+                onClick={handleAddToCart}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all shadow-md"
+            >
+                Add to Cart
             </button>
         </div>
       </div>
@@ -437,117 +534,10 @@ function MobileListingPage() {
   const [maxPrice, setMaxPrice] = useState(150000);
   const [selectedBrand, setSelectedBrand] = useState('All');
 
-  const allMobiles = [
-    {
-      name: 'iPhone 15 Pro Max',
-      brand: 'Apple',
-      price: 134999,
-      originalPrice: 144999,
-      discount: 7,
-      image: 'https://res.cloudinary.com/dcdwworlp/image/upload/v1759304475/81dT7CUY6GL._UF350_350_QL80__ccviju.jpg',
-      specs: { ram: '8GB', storage: '256GB', display: '6.7" Super Retina XDR' }
-    },
-    {
-      name: 'Samsung Galaxy S24 Ultra',
-      brand: 'Samsung',
-      price: 124999,
-      originalPrice: 134999,
-      discount: 7,
-      image: 'https://res.cloudinary.com/dcdwworlp/image/upload/v1759305068/-original-imagx9egm9mgmvab_rtv12x.jpg',
-      specs: { ram: '12GB', storage: '256GB', display: '6.8" Dynamic AMOLED 2X' }
-    },
-    {
-      name: 'OnePlus 12',
-      brand: 'OnePlus',
-      price: 64999,
-      originalPrice: 69999,
-      discount: 7,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/k/p/g/-original-imagw29ffdskz4fy.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.82" AMOLED' }
-    },
-    {
-      name: 'Google Pixel 8 Pro',
-      brand: 'Google',
-      price: 89999,
-      originalPrice: 99999,
-      discount: 10,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/v/a/n/-original-imagt893dfth4zkp.jpeg?q=70',
-      specs: { ram: '12GB', storage: '128GB', display: '6.7" LTPO OLED' }
-    },
-    {
-      name: 'Xiaomi 14',
-      brand: 'Xiaomi',
-      price: 54999,
-      originalPrice: 64999,
-      discount: 15,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/o/f/x/14-mzb0gmtin-xiaomi-original-imagy4g4rhajpams.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.36" AMOLED' }
-    },
-    {
-      name: 'Vivo X100 Pro',
-      brand: 'Vivo',
-      price: 89999,
-      originalPrice: 99999,
-      discount: 10,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/p/x/f/-original-imagx24wjfzgrjcz.jpeg?q=70',
-      specs: { ram: '16GB', storage: '512GB', display: '6.78" AMOLED' }
-    },
-    {
-      name: 'Oppo Reno11 Pro 5G',
-      brand: 'Oppo',
-      price: 37999,
-      originalPrice: 44999,
-      discount: 15,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/j/s/z/reno11-pro-5g-cph2607-oppo-original-imagwu6mg5asajyq.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.7" AMOLED' }
-    },
-    {
-      name: 'Realme GT 6',
-      brand: 'Realme',
-      price: 44999,
-      originalPrice: 54999,
-      discount: 18,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/w/i/d/gt-6-rmx3851-realme-original-imagyv5ghfchzfsz.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.78" AMOLED' }
-    },
-    {
-      name: 'Nothing Phone (2)',
-      brand: 'Nothing',
-      price: 39999,
-      originalPrice: 44999,
-      discount: 11,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/u/v/h/-original-imags37hy7uz2usv.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.7" LTPO OLED' }
-    },
-    {
-      name: 'Motorola Edge 50 Pro',
-      brand: 'Motorola',
-      price: 34999,
-      originalPrice: 39999,
-      discount: 13,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/i/p/b/-original-imagzm8qmrdsrhbz.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.7" pOLED' }
-    },
-    {
-      name: 'iQOO 12',
-      brand: 'iQOO',
-      price: 52999,
-      originalPrice: 59999,
-      discount: 12,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/e/y/h/12-5g-i2220-iqoo-original-imagwu4x8chmcxhm.jpeg?q=70',
-      specs: { ram: '12GB', storage: '256GB', display: '6.78" AMOLED' }
-    },
-    {
-      name: 'Honor X9b 5G',
-      brand: 'Honor',
-      price: 21999,
-      originalPrice: 24999,
-      discount: 12,
-      image: 'https://rukminim2.flixcart.com/image/416/416/xif0q/mobile/s/g/m/-original-imagx2k2eggevrda.jpeg?q=70',
-      specs: { ram: '8GB', storage: '256GB', display: '6.78" AMOLED' }
-    }
-  ];
+  // CHANGE: Using imported `products` data instead of the hardcoded array.
+  const allMobiles = products.filter(p => p.category === 'mobiles');
 
+  // Assumes the product objects in `products.js` have a `brand` property.
   const brands = [...new Set(allMobiles.map(mobile => mobile.brand))].sort();
 
   const filteredMobiles = allMobiles.filter(mobile => {
@@ -587,8 +577,8 @@ function MobileListingPage() {
           <div className="lg:col-span-3">
             {filteredMobiles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredMobiles.map((mobile, index) => (
-                  <MobileCard key={index} mobile={mobile} />
+                {filteredMobiles.map((mobile) => (
+                  <MobileCard key={mobile.id} mobile={mobile} />
                 ))}
               </div>
             ) : (

@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Link } from "react-router-dom"; 
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Menu, X, Search, ShoppingCart, User, Star, Sparkles, Headphones, LogIn, LogOut, Smartphone, Tablet, Tv, Refrigerator, Cpu } from 'lucide-react';
-import { products } from '../data/products';
+
+const API_URL = 'http://localhost:5001/api/products';
 
 function AuthPopup({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -46,9 +46,7 @@ function AuthPopup({ onClose }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Full Name
-              </label>
+              <label className="block text-gray-700 font-medium mb-2">Full Name</label>
               <input
                 type="text"
                 name="name"
@@ -62,9 +60,7 @@ function AuthPopup({ onClose }) {
           )}
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Email {!isLogin && '/ Phone'}
-            </label>
+            <label className="block text-gray-700 font-medium mb-2">Email {!isLogin && '/ Phone'}</label>
             <input
               type="text"
               name="email"
@@ -79,9 +75,7 @@ function AuthPopup({ onClose }) {
           {!isLogin && (
             <>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Phone Number
-                </label>
+                <label className="block text-gray-700 font-medium mb-2">Phone Number</label>
                 <input
                   type="tel"
                   name="phone"
@@ -94,9 +88,7 @@ function AuthPopup({ onClose }) {
               </div>
 
               <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Address
-                </label>
+                <label className="block text-gray-700 font-medium mb-2">Address</label>
                 <textarea
                   name="address"
                   value={formData.address}
@@ -110,9 +102,7 @@ function AuthPopup({ onClose }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    City
-                  </label>
+                  <label className="block text-gray-700 font-medium mb-2">City</label>
                   <input
                     type="text"
                     name="city"
@@ -124,9 +114,7 @@ function AuthPopup({ onClose }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    State
-                  </label>
+                  <label className="block text-gray-700 font-medium mb-2">State</label>
                   <input
                     type="text"
                     name="state"
@@ -140,9 +128,7 @@ function AuthPopup({ onClose }) {
               </div>
 
               <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  PIN Code
-                </label>
+                <label className="block text-gray-700 font-medium mb-2">PIN Code</label>
                 <input
                   type="text"
                   name="pinCode"
@@ -157,9 +143,7 @@ function AuthPopup({ onClose }) {
           )}
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Password
-            </label>
+            <label className="block text-gray-700 font-medium mb-2">Password</label>
             <input
               type="password"
               name="password"
@@ -173,9 +157,7 @@ function AuthPopup({ onClose }) {
 
           {!isLogin && (
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Confirm Password
-              </label>
+              <label className="block text-gray-700 font-medium mb-2">Confirm Password</label>
               <input
                 type="password"
                 name="confirmPassword"
@@ -201,9 +183,7 @@ function AuthPopup({ onClose }) {
               onClick={() => setIsLogin(!isLogin)}
               className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
             >
-              {isLogin
-                ? "Don't have an account? Sign Up"
-                : 'Already have an account? Login'}
+              {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Login'}
             </button>
           </div>
         </form>
@@ -213,12 +193,19 @@ function AuthPopup({ onClose }) {
 }
 
 function Sidebar({ isLoggedIn, onClose, onLogout }) {
+  const navigate = useNavigate();
+
   const menuItems = [
-    { icon: Star, label: 'Bestsellers' },
-    { icon: Sparkles, label: 'New Releases' },
-    { icon: User, label: 'Your Account' },
-    { icon: Headphones, label: 'Customer Service' }
+    { icon: Star, label: 'Bestsellers', path: '/best-sellers' },
+    { icon: Sparkles, label: 'New Arrivals', path: '/new-arrivals' },
+    { icon: User, label: 'Your Account', path: '/account' },
+    { icon: Headphones, label: 'Customer Service', path: '/support' }
   ];
+
+  const handleMenuClick = (path) => {
+    navigate(path);
+    onClose();
+  };
 
   return (
     <>
@@ -246,6 +233,7 @@ function Sidebar({ isLoggedIn, onClose, onLogout }) {
           {menuItems.map((item, index) => (
             <button
               key={index}
+              onClick={() => handleMenuClick(item.path)}
               className="w-full flex items-center gap-4 px-6 py-4 hover:bg-orange-50 transition-all border-b border-gray-100"
             >
               <item.icon size={20} className="text-orange-600" />
@@ -292,9 +280,11 @@ function Navbar({ isLoggedIn, onLogout }) {
               >
                 <Menu size={24} />
               </button>
-              <h1 className="text-white text-2xl sm:text-3xl font-bold tracking-wide">
-                Rajakaka
-              </h1>
+              <Link to="/">
+                <h1 className="text-white text-2xl sm:text-3xl font-bold tracking-wide cursor-pointer">
+                  Rajakaka
+                </h1>
+              </Link>
             </div>
 
             <div className="flex-1 max-w-2xl mx-4 hidden md:block">
@@ -345,9 +335,7 @@ function Navbar({ isLoggedIn, onLogout }) {
       </nav>
 
       {showAuthPopup && (
-        <AuthPopup
-          onClose={() => setShowAuthPopup(false)}
-        />
+        <AuthPopup onClose={() => setShowAuthPopup(false)} />
       )}
 
       {showSidebar && (
@@ -363,9 +351,9 @@ function Navbar({ isLoggedIn, onLogout }) {
 
 function CategorySection() {
   const categories = [
-    { icon: Smartphone, name: "Mobiles", path: "/mobile", color: "bg-blue-100", iconColor: "text-blue-600" },
-    { icon: Tablet, name: "Tablets", path: "/tablet", color: "bg-green-100", iconColor: "text-green-600" },
-    { icon: Tv, name: "TVs", path: "/tv", color: "bg-red-100", iconColor: "text-red-600" },
+    { icon: Smartphone, name: "Mobiles", path: "/mobiles", color: "bg-blue-100", iconColor: "text-blue-600" },
+    { icon: Tablet, name: "Tablets", path: "/tablets", color: "bg-green-100", iconColor: "text-green-600" },
+    { icon: Tv, name: "TVs", path: "/tvs", color: "bg-red-100", iconColor: "text-red-600" },
     { icon: Refrigerator, name: "Appliances", path: "/appliances", color: "bg-yellow-100", iconColor: "text-yellow-600" },
     { icon: Cpu, name: "Electronics", path: "/electronics", color: "bg-pink-100", iconColor: "text-pink-600" }
   ];
@@ -400,6 +388,10 @@ function CategorySection() {
 function ProductSection({ title, products }) {
   const navigate = useNavigate();
 
+  if (!products || products.length === 0) {
+    return null;
+  }
+
   return (
     <div className="py-8 bg-white">
       <div className="max-w-7xl mx-auto px-4">
@@ -410,13 +402,13 @@ function ProductSection({ title, products }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {products.map((product) => (
               <div
-                key={product.id}
-                onClick={() => navigate(`/product/${product.id}`)}
+                key={product._id || product.id}
+                onClick={() => navigate(`/product/${product.product_id || product._id}`)}
                 className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all p-4 flex flex-col group cursor-pointer"
               >
                 <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
                   <img
-                    src={product.images[0]}
+                    src={product.images?.[0] || '/placeholder.png'}
                     alt={product.name}
                     className="w-full h-full object-contain group-hover:scale-110 transition-transform"
                   />
@@ -426,15 +418,19 @@ function ProductSection({ title, products }) {
                 </h3>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg font-bold text-orange-600">
-                    ₹{product.price.toLocaleString()}
+                    ₹{product.price?.toLocaleString()}
                   </span>
-                  <span className="text-sm text-gray-500 line-through">
-                    ₹{product.originalPrice.toLocaleString()}
-                  </span>
+                  {product.original_price && (
+                    <span className="text-sm text-gray-500 line-through">
+                      ₹{product.original_price.toLocaleString()}
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full self-start">
-                  {product.discount}% OFF
-                </span>
+                {product.discount > 0 && (
+                  <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full self-start">
+                    {product.discount}% OFF
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -446,10 +442,71 @@ function ProductSection({ title, products }) {
 
 function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mobileDeals, setMobileDeals] = useState([]);
+  const [tabletDeals, setTabletDeals] = useState([]);
+  const [tvDeals, setTvDeals] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const smartphoneDeals = products.filter(p => p.category === 'mobiles').slice(0, 5);
-  const tvDeals = products.filter(p => p.category === 'tvs').slice(0, 5);
-  const tabletDeals = products.filter(p => p.category === 'tablets').slice(0, 5);
+  useEffect(() => {
+    fetchBestDeals();
+  }, []);
+
+  const fetchBestDeals = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch products with >10% discount for each category
+      const [mobilesRes, tabletsRes, tvsRes] = await Promise.all([
+        fetch(`${API_URL}?category=mobiles&min_discount=10`),
+        fetch(`${API_URL}?category=tablets&min_discount=10`),
+        fetch(`${API_URL}?category=tvs&min_discount=10`)
+      ]);
+
+      const mobilesData = await mobilesRes.json();
+      const tabletsData = await tabletsRes.json();
+      const tvsData = await tvsRes.json();
+
+      if (mobilesData.success) {
+        // Filter to ensure discount > 10% and limit to 5
+        const filteredMobiles = mobilesData.data
+          .filter(product => product.discount > 10)
+          .slice(0, 5);
+        setMobileDeals(filteredMobiles);
+      }
+
+      if (tabletsData.success) {
+        const filteredTablets = tabletsData.data
+          .filter(product => product.discount > 10)
+          .slice(0, 5);
+        setTabletDeals(filteredTablets);
+      }
+
+      if (tvsData.success) {
+        const filteredTvs = tvsData.data
+          .filter(product => product.discount > 10)
+          .slice(0, 5);
+        setTvDeals(filteredTvs);
+      }
+    } catch (error) {
+      console.error('Error fetching best deals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading deals...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -463,17 +520,17 @@ function LandingPage() {
       <div className="space-y-8 pb-12">
         <ProductSection
           title="Best Deals on Smartphones"
-          products={smartphoneDeals}
-        />
-
-        <ProductSection
-          title="Best Deals on TVs"
-          products={tvDeals}
+          products={mobileDeals}
         />
 
         <ProductSection
           title="Best Deals on Tablets"
           products={tabletDeals}
+        />
+
+        <ProductSection
+          title="Best Deals on TVs"
+          products={tvDeals}
         />
       </div>
     </div>

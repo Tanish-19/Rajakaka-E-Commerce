@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { products } from '../data/products'; // IMPORT: Data is now imported
 import {
   Menu, X, Search, ShoppingCart, User, Star, Sparkles, Headphones,
   LogIn, LogOut, SlidersHorizontal, ChevronDown, ChevronUp
 } from 'lucide-react';
+
+const API_URL = 'http://localhost:5001/api/products';
 
 
 // MODIFIED: Replaced with the more comprehensive AuthPopup
@@ -406,6 +408,7 @@ function FilterSection({ maxPrice, setMaxPrice, selectedBrand, setSelectedBrand,
             </label>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               <button
+                key="all-brands"
                 onClick={() => setSelectedBrand('All')}
                 className={`w-full text-left px-4 py-2 rounded-lg transition-all ${
                   selectedBrand === 'All'
@@ -465,32 +468,33 @@ function FilterSection({ maxPrice, setMaxPrice, selectedBrand, setSelectedBrand,
   );
 }
 
+
 // MODIFIED: This component now handles navigation and uses the imported product data structure.
 function MobileCard({ mobile }) {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    navigate(`/product/${mobile.id}`);
+    navigate(`/product/${mobile.product_id || mobile._id}`);
   };
 
   const handleAddToCart = (e) => {
-    e.stopPropagation(); // Prevents navigating when the button is clicked
-    // Add to cart logic would go here
-    console.log(`Product ${mobile.name} added to cart.`);
+    e.stopPropagation();
+    console.log('Product', mobile.name, 'added to cart.');
   };
 
   return (
-    <div
-      onClick={handleCardClick}
+    <div 
+      onClick={handleCardClick} 
       className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all overflow-hidden group cursor-pointer flex flex-col"
     >
+      {/* Product Image */}
       <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
         <img
-          src={mobile.images[0]} // CHANGE: Uses `images` array from product data
+          src={mobile.images?.[0] || '/placeholder.png'}
           alt={mobile.name}
           className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-4"
         />
-        {mobile.discount && (
+        {mobile.discount > 0 && (
           <div className="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">
             {mobile.discount}% OFF
           </div>
@@ -498,49 +502,117 @@ function MobileCard({ mobile }) {
       </div>
 
       <div className="p-4 flex flex-col flex-grow">
+        {/* Product Title */}
         <h3 className="font-bold text-gray-800 text-lg mb-2 line-clamp-2 h-14">
           {mobile.name}
         </h3>
 
-        {/* REMOVED: Static specs display is removed for better data flexibility */}
+        {/* RAM and Storage Specifications */}
+        <div className="mb-3 space-y-1 text-sm text-gray-700">
+          {/* RAM Options */}
+          {mobile.ram && mobile.ram.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-gray-800">RAM:</span>
+              <span className="text-gray-600">
+                {mobile.ram.slice(0, 3).join(', ')}
+                {mobile.ram.length > 3 && '...'}
+              </span>
+            </div>
+          )}
+
+          {/* Storage Options */}
+          {mobile.storage && mobile.storage.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-gray-800">Storage:</span>
+              <span className="text-gray-600">
+                {mobile.storage.slice(0, 3).join(', ')}
+                {mobile.storage.length > 3 && '...'}
+              </span>
+            </div>
+          )}
+
+          {/* Available Colors (Optional) */}
+          {mobile.colors && mobile.colors.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-gray-800">Colors:</span>
+              <span className="text-gray-600">
+                {mobile.colors.slice(0, 2).join(', ')}
+                {mobile.colors.length > 2 && ` +${mobile.colors.length - 2}`}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="mt-auto">
-            <div className="flex items-center gap-2 mb-3">
+          {/* Pricing Section */}
+          <div className="flex items-baseline gap-2 mb-1">
             <span className="text-2xl font-bold text-orange-600">
-                ₹{mobile.price.toLocaleString()}
+              ₹{mobile.price?.toLocaleString()}
             </span>
-            {mobile.originalPrice && (
-                <span className="text-sm text-gray-500 line-through">
-                ₹{mobile.originalPrice.toLocaleString()}
-                </span>
+            {mobile.original_price && mobile.original_price > mobile.price && (
+              <span className="text-sm text-gray-500 line-through">
+                ₹{mobile.original_price.toLocaleString()}
+              </span>
             )}
-            </div>
+          </div>
 
-            <button
-                onClick={handleAddToCart}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all shadow-md"
-            >
-                Add to Cart
-            </button>
+          {/* Savings Amount */}
+          {mobile.discount > 0 && mobile.original_price && (
+            <p className="text-xs text-green-600 font-semibold mb-3">
+              Save ₹{(mobile.original_price - mobile.price).toLocaleString()}
+            </p>
+          )}
+
+          {/* Add to Cart Button */}
+          <button
+            onClick={handleAddToCart}
+            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all shadow-md"
+          >
+            Add to Cart
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
+
+
 // MobileListingPage Component: The main page that assembles all other components.
 function MobileListingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [maxPrice, setMaxPrice] = useState(150000);
   const [selectedBrand, setSelectedBrand] = useState('All');
+  const [allMobiles, setAllMobiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // CHANGE: Using imported `products` data instead of the hardcoded array.
-  const allMobiles = products.filter(p => p.category === 'mobiles');
+  useEffect(() => {
+    fetchMobiles();
+  }, []);
 
-  // Assumes the product objects in `products.js` have a `brand` property.
-  const brands = [...new Set(allMobiles.map(mobile => mobile.brand))].sort();
+  const fetchMobiles = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}?category=mobiles`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAllMobiles(data.data);
+      } else {
+        setError('Failed to fetch products');
+      }
+    } catch (error) {
+      console.error('Error fetching mobiles:', error);
+      setError('Error connecting to server');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filteredMobiles = allMobiles.filter(mobile => {
+  const brands = [...new Set(allMobiles.map(mobile => mobile.brand).filter(Boolean))];
+
+  const filteredMobiles = allMobiles.filter((mobile) => {
     const brandMatch = selectedBrand === 'All' || mobile.brand === selectedBrand;
     const priceMatch = mobile.price <= maxPrice;
     return brandMatch && priceMatch;
@@ -555,13 +627,46 @@ function MobileListingPage() {
     setSelectedBrand('All');
   };
 
+  if (loading) {
+    return (
+      <div className="bg-gray-100 min-h-screen">
+        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading products...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-100 min-h-screen">
+        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center bg-white p-10 rounded-lg shadow-md">
+            <h3 className="text-2xl font-bold text-red-600">Error</h3>
+            <p className="text-gray-600 mt-2">{error}</p>
+            <button
+              onClick={fetchMobiles}
+              className="mt-4 bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-100 min-h-screen">
       <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
-
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Section */}
           <div className="lg:col-span-1">
             <FilterSection
               brands={brands}
@@ -573,18 +678,17 @@ function MobileListingPage() {
             />
           </div>
 
-          {/* Mobile Listing Section */}
           <div className="lg:col-span-3">
             {filteredMobiles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredMobiles.map((mobile) => (
-                  <MobileCard key={mobile.id} mobile={mobile} />
+                  <MobileCard key={mobile._id} mobile={mobile} />
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center bg-white p-10 rounded-lg shadow-md h-full">
-                  <h3 className="text-2xl font-bold text-gray-700">No Mobiles Found</h3>
-                  <p className="text-gray-500 mt-2">Try adjusting your filters to find what you're looking for.</p>
+                <h3 className="text-2xl font-bold text-gray-700">No Mobiles Found</h3>
+                <p className="text-gray-500 mt-2">Try adjusting your filters to find what you're looking for.</p>
               </div>
             )}
           </div>
@@ -593,5 +697,6 @@ function MobileListingPage() {
     </div>
   );
 }
+
 
 export default MobileListingPage;

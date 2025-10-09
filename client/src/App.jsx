@@ -8,11 +8,15 @@ import ElectronicsSection from "./components/ElectronicsSection";
 import ProductDetails from "./components/ProductDetails";
 import AdminPanel from "./components/Admin/AdminPanel";
 import AdminLoginPage from "./components/Admin/AdminLogin";
+import ProtectedRoute from "./components/Admin/ProtectedRoute";
+import NewArrivals from "./components/NewArrivals";
+import BestSellers from "./components/BestSellers";
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* ========== Your Existing Public Routes ========== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/mobile" element={<MobileSection />} />
         <Route path="/tablet" element={<TabletSection />} />
@@ -20,8 +24,23 @@ function App() {
         <Route path="/appliances" element={<AppliancesSection />} />
         <Route path="/electronics" element={<ElectronicsSection />} />
         <Route path="/product/:id" element={<ProductDetails />} />
-        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/new-arrivals" element={<NewArrivals />} />
+        <Route path="/best-sellers" element={<BestSellers />} />
+        
+        {/* ========== Admin Authentication Routes ========== */}
+        
+        {/* Admin Login Route (Public - anyone can access) */}
         <Route path="/admin-login" element={<AdminLoginPage />} />
+        
+        {/* Protected Admin Route (Requires Authentication) */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </Router>
   );

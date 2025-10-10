@@ -2,38 +2,37 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
+// Routes
 import adminRoutes from './routes/adminRoutes.js';
-import productRoutes from './routes/productRoutes.js'; // Add this
+import productRoutes from './routes/productRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js'
 
 dotenv.config();
+
 const app = express();
 
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Atlas Connected Successfully'))
-  .catch((err) => console.error('❌ MongoDB Connection Error:', err.message));
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rajakaka', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB Connected'))
+.catch(err => console.log('MongoDB Connection Error:', err));
 
 // Routes
 app.use('/api/admin', adminRoutes);
-app.use('/api/products', productRoutes); // Add this line
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'Server is running',
-    timestamp: new Date()
-  });
-});
+app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes); // ADD THIS
+app.use('/api', userRoutes)
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

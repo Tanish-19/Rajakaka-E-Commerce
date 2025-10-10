@@ -1,59 +1,57 @@
-// middleware/authMiddleware.js
-
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
 
-const authMiddleware = async (req, res, next) => {
+// Your existing protectAdmin (keep as is)
+export const protectAdmin = async (req, res, next) => {
   try {
-    // Get token from header
-    const token = req.headers.authorization?.split(' ')[1]; // Bearer TOKEN
-
+    const token = req.headers.authorization?.split(' ')[1];
+    
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided, authorization denied'
+        message: 'No token provided'
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Get admin from database
-    const admin = await Admin.findById(decoded.id).select('-password');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const admin = await Admin.findById(decoded.adminId);
 
     if (!admin) {
       return res.status(401).json({
         success: false,
-        message: 'Admin not found, authorization denied'
+        message: 'Admin not found'
       });
     }
 
-    // Add admin to request object
-    req.admin = admin;
+    req.adminId = decoded.adminId;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired'
-      });
-    }
-
-    res.status(500).json({
+    return res.status(401).json({
       success: false,
-      message: 'Server error in authentication',
-      error: error.message
+      message: 'Invalid token'
     });
   }
 };
 
-export default authMiddleware;
+// NEW: Add protectUser function
+export const protectUser = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+};

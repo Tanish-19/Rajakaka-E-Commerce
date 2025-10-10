@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, TrendingUp } from 'lucide-react';
+import { Star, Sparkles } from 'lucide-react';
 
 const API_URL = 'http://localhost:5001/api/products';
 
-function BestSellers() {
+function NewArrivals() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -20,21 +20,27 @@ function BestSellers() {
   ];
 
   useEffect(() => {
-    fetchBestSellers();
+    fetchNewArrivals();
   }, [selectedCategory]);
 
-  const fetchBestSellers = async () => {
+  const fetchNewArrivals = async () => {
     try {
       setLoading(true);
-      const categoryParam = selectedCategory !== 'all' ? `?category=${selectedCategory}` : '';
-      const response = await fetch(`${API_URL}/filter/best-sellers${categoryParam}`);
+      
+      // Build query params
+      let queryParams = 'newArrival=true';
+      if (selectedCategory !== 'all') {
+        queryParams += `&category=${selectedCategory}`;
+      }
+      
+      const response = await fetch(`${API_URL}?${queryParams}`);
       const data = await response.json();
       
       if (data.success) {
         setProducts(data.data);
       }
     } catch (error) {
-      console.error('Error fetching best sellers:', error);
+      console.error('Error fetching new arrivals:', error);
     } finally {
       setLoading(false);
     }
@@ -44,8 +50,8 @@ function BestSellers() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
-          <TrendingUp className="text-orange-600" size={32} />
-          <h1 className="text-3xl font-bold text-gray-800">Best Sellers</h1>
+          <Sparkles className="text-orange-600" size={32} />
+          <h1 className="text-3xl font-bold text-gray-800">New Arrivals</h1>
         </div>
 
         {/* Category Filter */}
@@ -72,19 +78,19 @@ function BestSellers() {
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            No best sellers found in this category.
+            No new arrivals found in this category.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map(product => (
               <div
-                key={product.product_id}
-                onClick={() => navigate(`/product/${product.product_id}`)}
+                key={product._id || product.product_id}
+                onClick={() => navigate(`/product/${product.product_id || product._id}`)}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer overflow-hidden"
               >
                 <div className="relative">
                   <img
-                    src={product.images[0]}
+                    src={product.images?.[0] || '/placeholder.png'}
                     alt={product.name}
                     className="w-full h-48 object-cover"
                   />
@@ -93,8 +99,9 @@ function BestSellers() {
                       {product.discount}% OFF
                     </span>
                   )}
-                  <span className="absolute top-2 left-2 bg-orange-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                    BEST SELLER
+                  <span className="absolute top-2 left-2 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                    <Sparkles size={12} />
+                    NEW
                   </span>
                 </div>
                 
@@ -106,7 +113,7 @@ function BestSellers() {
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center">
                       <Star className="fill-yellow-400 text-yellow-400" size={16} />
-                      <span className="text-sm ml-1">{product.rating || 0}</span>
+                      <span className="text-sm ml-1">{product.rating || 4.5}</span>
                     </div>
                     <span className="text-sm text-gray-500">
                       ({product.reviews_count || 0} reviews)
@@ -115,9 +122,9 @@ function BestSellers() {
                   
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-gray-900">
-                      ₹{product.price.toLocaleString()}
+                      ₹{product.price?.toLocaleString()}
                     </span>
-                    {product.original_price > product.price && (
+                    {product.original_price && product.original_price > product.price && (
                       <span className="text-sm text-gray-500 line-through">
                         ₹{product.original_price.toLocaleString()}
                       </span>
@@ -133,4 +140,4 @@ function BestSellers() {
   );
 }
 
-export default BestSellers;
+export default NewArrivals;

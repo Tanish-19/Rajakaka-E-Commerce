@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 
-const API_URL = 'http://localhost:5001/api/products';
+const API_URL = 'http://localhost:5001/api/admin/products';
 
 function ProductManagement() {
   const [formData, setFormData] = useState({
@@ -19,6 +19,15 @@ function ProductManagement() {
     storage: [''],
     brand: '',
     stock: '',
+    // TV specific fields
+    screenSize: '',
+    resolution: '',
+    displayType: '',
+    smartTV: false,
+    // Appliances specific fields
+    capacity: '',
+    energyRating: '',
+    warranty: '',
     isBestSeller: false,
     isNewArrival: false
   });
@@ -72,7 +81,7 @@ function ProductManagement() {
         description: formData.description,
         price: parseInt(formData.price),
         original_price: parseInt(formData.originalPrice),
-        discount: formData.discount ? parseInt(formData.discount) : undefined,
+        discount: formData.discount ? parseInt(formData.discount) : 0,
         images: formData.images.filter(img => img.trim() !== ''),
         offers: formData.offers.filter(offer => offer.trim() !== ''),
         colors: formData.colors.filter(color => color.trim() !== ''),
@@ -80,6 +89,19 @@ function ProductManagement() {
         storage: formData.storage.filter(s => s.trim() !== ''),
         brand: formData.brand,
         stock: formData.stock ? parseInt(formData.stock) : 0,
+        // TV fields
+        ...(formData.category === 'tvs' && {
+          screen_size: formData.screenSize,
+          resolution: formData.resolution,
+          display_type: formData.displayType,
+          smart_tv: formData.smartTV
+        }),
+        // Appliances fields
+        ...(formData.category === 'appliances' && {
+          capacity: formData.capacity,
+          energy_rating: formData.energyRating,
+          warranty: formData.warranty
+        }),
         is_best_seller: formData.isBestSeller,
         is_new_arrival: formData.isNewArrival
       };
@@ -97,6 +119,7 @@ function ProductManagement() {
 
       if (data.success) {
         setSubmitMessage('Product added successfully!');
+        // Reset form
         setFormData({
           productId: '',
           name: '',
@@ -112,6 +135,13 @@ function ProductManagement() {
           storage: [''],
           brand: '',
           stock: '',
+          screenSize: '',
+          resolution: '',
+          displayType: '',
+          smartTV: false,
+          capacity: '',
+          energyRating: '',
+          warranty: '',
           isBestSeller: false,
           isNewArrival: false
         });
@@ -292,6 +322,121 @@ function ProductManagement() {
             </div>
           </div>
         </div>
+
+        {/* TV Specific Fields */}
+        {formData.category === 'tvs' && (
+          <div className="bg-blue-50 p-6 rounded-lg space-y-4 border-2 border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800">TV Specifications</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Screen Size (e.g., 55 inches)
+                </label>
+                <input
+                  type="text"
+                  name="screenSize"
+                  value={formData.screenSize}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="55 inches"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Resolution (e.g., 4K Ultra HD)
+                </label>
+                <input
+                  type="text"
+                  name="resolution"
+                  value={formData.resolution}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="4K Ultra HD, 1080p"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Display Type (e.g., OLED, LED)
+                </label>
+                <input
+                  type="text"
+                  name="displayType"
+                  value={formData.displayType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="OLED, QLED, LED"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="smartTV"
+                    checked={formData.smartTV}
+                    onChange={handleInputChange}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700">Smart TV</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Appliances Specific Fields */}
+        {formData.category === 'appliances' && (
+          <div className="bg-green-50 p-6 rounded-lg space-y-4 border-2 border-green-200">
+            <h3 className="text-lg font-semibold text-green-800">Appliance Specifications</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Capacity (e.g., 6.5 kg, 200L)
+                </label>
+                <input
+                  type="text"
+                  name="capacity"
+                  value={formData.capacity}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="6.5 kg, 200L"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Energy Rating (e.g., 5 Star)
+                </label>
+                <input
+                  type="text"
+                  name="energyRating"
+                  value={formData.energyRating}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="5 Star, 3 Star"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Warranty (e.g., 2 years)
+                </label>
+                <input
+                  type="text"
+                  name="warranty"
+                  value={formData.warranty}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="1 year, 2 years"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Arrays */}
         {['images', 'offers', 'colors', 'ram', 'storage'].map(field => (

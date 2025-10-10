@@ -26,8 +26,14 @@ function BestSellers() {
   const fetchBestSellers = async () => {
     try {
       setLoading(true);
-      const categoryParam = selectedCategory !== 'all' ? `?category=${selectedCategory}` : '';
-      const response = await fetch(`${API_URL}/filter/best-sellers${categoryParam}`);
+      
+      // Build query params
+      let queryParams = 'bestSeller=true';
+      if (selectedCategory !== 'all') {
+        queryParams += `&category=${selectedCategory}`;
+      }
+      
+      const response = await fetch(`${API_URL}?${queryParams}`);
       const data = await response.json();
       
       if (data.success) {
@@ -78,13 +84,13 @@ function BestSellers() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map(product => (
               <div
-                key={product.product_id}
-                onClick={() => navigate(`/product/${product.product_id}`)}
+                key={product._id || product.product_id}
+                onClick={() => navigate(`/product/${product.product_id || product._id}`)}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer overflow-hidden"
               >
                 <div className="relative">
                   <img
-                    src={product.images[0]}
+                    src={product.images?.[0] || '/placeholder.png'}
                     alt={product.name}
                     className="w-full h-48 object-cover"
                   />
@@ -106,7 +112,7 @@ function BestSellers() {
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center">
                       <Star className="fill-yellow-400 text-yellow-400" size={16} />
-                      <span className="text-sm ml-1">{product.rating || 0}</span>
+                      <span className="text-sm ml-1">{product.rating || 4.5}</span>
                     </div>
                     <span className="text-sm text-gray-500">
                       ({product.reviews_count || 0} reviews)
@@ -115,9 +121,9 @@ function BestSellers() {
                   
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-gray-900">
-                      ₹{product.price.toLocaleString()}
+                      ₹{product.price?.toLocaleString()}
                     </span>
-                    {product.original_price > product.price && (
+                    {product.original_price && product.original_price > product.price && (
                       <span className="text-sm text-gray-500 line-through">
                         ₹{product.original_price.toLocaleString()}
                       </span>

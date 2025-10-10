@@ -1,24 +1,46 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Users, Menu, X, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Menu, X, LogOut, User, AlertCircle } from 'lucide-react';
 import ProductManagement from './ProductManagement';
 import ViewPurchases from './ViewPurchases';
 import UserManagement from './UserManagement';
+import { getAdminProfile } from './services/api';
 
 function AdminPanel() {
   const [activeTab, setActiveTab] = useState('products');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [adminData, setAdminData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load admin data from localStorage on component mount
+  // Fetch admin data from backend on component mount
   useEffect(() => {
-    const storedAdminData = localStorage.getItem('adminData');
-    if (storedAdminData) {
+    const fetchAdminData = async () => {
       try {
-        setAdminData(JSON.parse(storedAdminData));
-      } catch (error) {
-        console.error('Error parsing admin data:', error);
+        setLoading(true);
+        const profile = await getAdminProfile();
+        setAdminData(profile);
+        // Store in localStorage for offline access
+        localStorage.setItem('adminData', JSON.stringify(profile));
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching admin profile:', err);
+        setError(err.message);
+        
+        // Fallback to localStorage if available
+        const storedAdminData = localStorage.getItem('adminData');
+        if (storedAdminData) {
+          try {
+            setAdminData(JSON.parse(storedAdminData));
+          } catch (parseError) {
+            console.error('Error parsing stored admin data:', parseError);
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchAdminData();
   }, []);
 
   const tabs = [
@@ -29,13 +51,23 @@ function AdminPanel() {
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      // Remove token and admin data from storage
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminData');
-      // Redirect to login page
-      window.location.href = '/admin-login';
+      window.location.href = '/admin/login';
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-6 text-gray-600 text-lg font-medium">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -47,7 +79,7 @@ function AdminPanel() {
             <div>
               <h1 className="text-2xl font-bold">Admin Dashboard</h1>
               <p className="text-sm text-blue-100 hidden sm:block">
-                Welcome back, {adminData?.name || adminData?.email || 'Admin'}
+                Welcome back, {adminData?.username || 'Admin'}
               </p>
             </div>
           </div>
@@ -56,8 +88,21 @@ function AdminPanel() {
             {/* Admin Info */}
             <div className="hidden md:flex items-center gap-2 bg-blue-700 px-4 py-2 rounded-lg">
               <User size={18} />
-              <span className="text-sm font-medium">{adminData?.email || 'Loading...'}</span>
+              <div className="text-sm">
+                <p className="font-medium">{adminData?.username || 'Loading...'}</p>
+                {adminData?.email && (
+                  <p className="text-xs text-blue-200">{adminData.email}</p>
+                )}
+              </div>
             </div>
+
+            {/* Error Indicator */}
+            {error && (
+              <div className="hidden md:flex items-center gap-1 bg-yellow-500 px-3 py-1 rounded text-xs font-medium">
+                <AlertCircle size={14} />
+                Offline Mode
+              </div>
+            )}
 
             {/* Logout Button */}
             <button
@@ -111,11 +156,18 @@ function AdminPanel() {
 
               {/* Admin Info in Sidebar (Mobile) */}
               <div className="md:hidden mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <User size={16} />
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <User size={20} className="text-blue-600" />
+                  </div>
                   <div>
-                    <p className="font-medium text-gray-800">{adminData?.name || 'Admin'}</p>
-                    <p className="text-xs">{adminData?.email || 'Loading...'}</p>
+                    <p className="font-medium text-gray-800">{adminData?.username || 'Admin'}</p>
+                    {adminData?.email && (
+                      <p className="text-xs text-gray-500 break-all">{adminData.email}</p>
+                    )}
+                    {adminData?.role && (
+                      <p className="text-xs text-blue-600 capitalize font-medium">{adminData.role}</p>
+                    )}
                   </div>
                 </div>
               </div>

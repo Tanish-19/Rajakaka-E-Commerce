@@ -1,27 +1,34 @@
 import { useState, useEffect } from 'react';
-import { User, X, RefreshCw, Mail, Phone, MapPin } from 'lucide-react';
-
+import { User, X, RefreshCw, Mail, Phone, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
 function UserManagement() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    totalPages: 1,
+    totalUsers: 0,
+    usersPerPage: 20,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage);
+  }, [currentPage]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch(`http://localhost:5001/api/users?page=${page}&limit=20`);
+      const result = await response.json();
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (result.success) {
+        setUsers(result.data || []);
+        setPagination(result.pagination);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -29,14 +36,58 @@ function UserManagement() {
     }
   };
 
-  const handleUserClick = (user) => {
-    setSelectedUser(user);
-    setShowModal(true);
+  const handleUserClick = async (userId) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/users/${userId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setSelectedUser(result.data);
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedUser(null);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const renderPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 mx-1 rounded-lg transition-all ${
+            currentPage === i
+              ? 'bg-blue-600 text-white font-semibold'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return pageNumbers;
   };
 
   if (isLoading) {
@@ -53,10 +104,12 @@ function UserManagement() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-          <p className="text-gray-600 mt-1">Total Users: {users.length}</p>
+          <p className="text-gray-600 mt-1">
+            Total Users: {pagination.totalUsers} | Page {currentPage} of {pagination.totalPages}
+          </p>
         </div>
         <button
-          onClick={fetchUsers}
+          onClick={() => fetchUsers(currentPage)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
         >
           <RefreshCw size={18} />
@@ -70,28 +123,87 @@ function UserManagement() {
           <p className="text-gray-600 text-lg">No users found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              onClick={() => handleUserClick(user)}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-all">
-                  <User size={24} className="text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-800 truncate">{user.name}</h3>
-                  <p className="text-sm text-gray-600 truncate">{user.email}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Joined: {new Date(user.created_at).toLocaleDateString()}
-                  </p>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {users.map((user) => (
+              <div
+                key={user._id}
+                onClick={() => handleUserClick(user._id)}
+                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-all">
+                    <User size={24} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-800 truncate">{user.name}</h3>
+                    <p className="text-sm text-gray-600 truncate">{user.email}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Joined: {new Date(user.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!pagination.hasPrevPage}
+              className={`flex items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                pagination.hasPrevPage
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <ChevronLeft size={18} />
+              Previous
+            </button>
+
+            <div className="flex items-center">
+              {currentPage > 3 && (
+                <>
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    className="px-3 py-1 mx-1 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                  >
+                    1
+                  </button>
+                  {currentPage > 4 && <span className="px-2 text-gray-500">...</span>}
+                </>
+              )}
+
+              {renderPageNumbers()}
+
+              {currentPage < pagination.totalPages - 2 && (
+                <>
+                  {currentPage < pagination.totalPages - 3 && <span className="px-2 text-gray-500">...</span>}
+                  <button
+                    onClick={() => handlePageChange(pagination.totalPages)}
+                    className="px-3 py-1 mx-1 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                  >
+                    {pagination.totalPages}
+                  </button>
+                </>
+              )}
             </div>
-          ))}
-        </div>
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!pagination.hasNextPage}
+              className={`flex items-center gap-1 px-4 py-2 rounded-lg transition-all ${
+                pagination.hasNextPage
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Next
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </>
       )}
 
       {showModal && selectedUser && (
@@ -114,7 +226,7 @@ function UserManagement() {
                 </div>
                 <div>
                   <h4 className="text-2xl font-bold text-gray-800">{selectedUser.name}</h4>
-                  <p className="text-gray-600">Customer ID: {selectedUser.id.slice(0, 8)}...</p>
+                  <p className="text-gray-600">Customer ID: {selectedUser._id.slice(0, 8)}...</p>
                 </div>
               </div>
 
@@ -149,7 +261,7 @@ function UserManagement() {
                         <p>
                           {selectedUser.city}
                           {selectedUser.state && `, ${selectedUser.state}`}
-                          {selectedUser.pincode && ` - ${selectedUser.pincode}`}
+                          {selectedUser.pinCode && ` - ${selectedUser.pinCode}`}
                         </p>
                       )}
                     </div>
@@ -160,18 +272,18 @@ function UserManagement() {
                   <div className="bg-blue-50 rounded-lg p-4">
                     <p className="text-sm text-gray-600 mb-1">Member Since</p>
                     <p className="font-semibold text-gray-800">
-                      {new Date(selectedUser.created_at).toLocaleDateString('en-US', {
+                      {new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                       })}
                     </p>
                   </div>
-                  {selectedUser.last_login && (
+                  {selectedUser.lastLogin && (
                     <div className="bg-green-50 rounded-lg p-4">
                       <p className="text-sm text-gray-600 mb-1">Last Login</p>
                       <p className="font-semibold text-gray-800">
-                        {new Date(selectedUser.last_login).toLocaleDateString('en-US', {
+                        {new Date(selectedUser.lastLogin).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'

@@ -7,11 +7,14 @@ import {
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5001/api/products';
+const AUTH_URL = 'http://localhost:5001/api/auth';
 
 
 // MODIFIED: Replaced with the more comprehensive AuthPopup
 function AuthPopup({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -26,13 +29,88 @@ function AuthPopup({ onClose }) {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(''); // Clear error on input change
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, you would handle authentication here.
-    console.log('Form submitted:', formData);
-    onClose(); // Close the popup after submission
+    setError('');
+
+    // Validate password match for signup
+    if (!isLogin && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const endpoint = isLogin ? `${AUTH_URL}/login` : `${AUTH_URL}/register`;
+      
+      // Prepare request body based on login or signup
+      const requestBody = isLogin 
+        ? {
+            email: formData.email,
+            password: formData.password
+          }
+        : {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pinCode: formData.pinCode,
+            password: formData.password
+          };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Authentication failed');
+      }
+
+      if (data.success) {
+        // Store token in localStorage
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        
+        // Store user data if provided
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
+        console.log(`${isLogin ? 'Login' : 'Registration'} successful:`, data);
+        
+        // Close popup and refresh or update UI
+        onClose();
+        
+        // Optional: Reload page to update auth state
+        window.location.reload();
+      } else {
+        setError(data.message || 'Authentication failed');
+      }
+    } catch (err) {
+      console.error('Authentication error:', err);
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,12 +123,19 @@ function AuthPopup({ onClose }) {
           <button
             onClick={onClose}
             className="hover:bg-orange-700 p-1 rounded-full transition-all"
+            disabled={loading}
           >
             <X size={24} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
+
           {!isLogin && (
             <div>
               <label className="block text-gray-700 font-medium mb-2">
@@ -62,7 +147,8 @@ function AuthPopup({ onClose }) {
                 value={formData.name}
                 onChange={handleChange}
                 required={!isLogin}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter your full name"
               />
             </div>
@@ -78,7 +164,8 @@ function AuthPopup({ onClose }) {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              disabled={loading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder={isLogin ? "Enter email or phone" : "Enter your email"}
             />
           </div>
@@ -95,7 +182,8 @@ function AuthPopup({ onClose }) {
                   value={formData.phone}
                   onChange={handleChange}
                   required={!isLogin}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  disabled={loading}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter your phone number"
                 />
               </div>
@@ -109,7 +197,8 @@ function AuthPopup({ onClose }) {
                   value={formData.address}
                   onChange={handleChange}
                   required={!isLogin}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  disabled={loading}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter your address"
                   rows="2"
                 />
@@ -126,7 +215,8 @@ function AuthPopup({ onClose }) {
                     value={formData.city}
                     onChange={handleChange}
                     required={!isLogin}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    disabled={loading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="City"
                   />
                 </div>
@@ -140,7 +230,8 @@ function AuthPopup({ onClose }) {
                     value={formData.state}
                     onChange={handleChange}
                     required={!isLogin}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    disabled={loading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="State"
                   />
                 </div>
@@ -156,7 +247,8 @@ function AuthPopup({ onClose }) {
                   value={formData.pinCode}
                   onChange={handleChange}
                   required={!isLogin}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  disabled={loading}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter PIN code"
                 />
               </div>
@@ -173,8 +265,10 @@ function AuthPopup({ onClose }) {
               value={formData.password}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Enter password"
+              disabled={loading}
+              minLength={6}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              placeholder="Enter password (min 6 characters)"
             />
           </div>
 
@@ -189,7 +283,8 @@ function AuthPopup({ onClose }) {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required={!isLogin}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Confirm password"
               />
             </div>
@@ -197,16 +292,39 @@ function AuthPopup({ onClose }) {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {isLogin ? 'Login' : 'Sign Up'}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                {isLogin ? 'Logging in...' : 'Signing up...'}
+              </>
+            ) : (
+              <>{isLogin ? 'Login' : 'Sign Up'}</>
+            )}
           </button>
 
           <div className="text-center">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+                setFormData({
+                  name: '',
+                  email: '',
+                  phone: '',
+                  address: '',
+                  city: '',
+                  state: '',
+                  pinCode: '',
+                  password: '',
+                  confirmPassword: ''
+                });
+              }}
+              disabled={loading}
+              className="text-orange-600 hover:text-orange-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLogin
                 ? "Don't have an account? Sign Up"
@@ -218,7 +336,6 @@ function AuthPopup({ onClose }) {
     </div>
   );
 }
-
 
 // Sidebar Component: Provides navigation links and user actions.
 function Sidebar({ isLoggedIn, onClose, onLogout, onLoginClick }) {
@@ -562,21 +679,11 @@ function MobileCard({ mobile }) {
               Save ₹{(mobile.original_price - mobile.price).toLocaleString()}
             </p>
           )}
-
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all shadow-md"
-          >
-            Add to Cart
-          </button>
         </div>
       </div>
     </div>
   );
 }
-
-
 
 // MobileListingPage Component: The main page that assembles all other components.
 function MobileListingPage() {

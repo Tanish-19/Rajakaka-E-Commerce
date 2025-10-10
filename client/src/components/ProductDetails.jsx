@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, ShoppingCart, TrendingUp, User } from 'lucide-react';
-import { getProductById, getSimilarProducts } from '../data/products';
+
+const API_URL = 'http://localhost:5001/api/products';
 
 function ProductDetailPage() {
   const { id } = useParams();
@@ -15,6 +16,8 @@ function ProductDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [reviewForm, setReviewForm] = useState({
     userName: '',
     rating: 5,
@@ -23,24 +26,66 @@ function ProductDetailPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const productData = getProductById(id);
-    if (productData) {
-      setProduct(productData);
-      setSelectedColor(productData.colors[0] || '');
-      setSelectedRam(productData.ram[0] || '');
-      setSelectedStorage(productData.storage[0] || '');
-
-      const similar = getSimilarProducts(id, productData.category, 4);
-      setSimilarProducts(similar);
-
-      const storedReviews = localStorage.getItem(`reviews_${id}`);
-      if (storedReviews) {
-        const parsedReviews = JSON.parse(storedReviews);
-        setReviews(parsedReviews);
-        calculateAverageRating(parsedReviews);
-      }
-    }
+    fetchProductDetails();
   }, [id]);
+
+  const fetchProductDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch single product by ID
+      const response = await fetch(`${API_URL}/${id}`);
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const productData = data.data;
+        setProduct(productData);
+        
+        // Set initial selections
+        setSelectedColor(productData.colors?.[0] || '');
+        setSelectedRam(productData.ram?.[0] || '');
+        setSelectedStorage(productData.storage?.[0] || '');
+
+        // Fetch similar products from same category
+        if (productData.category) {
+          fetchSimilarProducts(productData.category, id);
+        }
+
+        // Load reviews from localStorage
+        const storedReviews = localStorage.getItem(`reviews_${id}`);
+        if (storedReviews) {
+          const parsedReviews = JSON.parse(storedReviews);
+          setReviews(parsedReviews);
+          calculateAverageRating(parsedReviews);
+        }
+      } else {
+        setError('Product not found');
+      }
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      setError('Failed to load product details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSimilarProducts = async (category, currentProductId) => {
+    try {
+      const response = await fetch(`${API_URL}?category=${category}&limit=5`);
+      const data = await response.json();
+
+      if (data.success) {
+        // Filter out current product and limit to 4 similar products
+        const similar = data.data
+          .filter(p => (p._id || p.product_id) !== currentProductId)
+          .slice(0, 4);
+        setSimilarProducts(similar);
+      }
+    } catch (error) {
+      console.error('Error fetching similar products:', error);
+    }
+  };
 
   const calculateAverageRating = (reviewsList) => {
     if (reviewsList.length === 0) {
@@ -103,11 +148,22 @@ function ProductDetailPage() {
     navigate(`/product/${productId}`);
   };
 
-  if (!product) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Product not found</h2>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading product details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center bg-white p-10 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">{error || 'Product not found'}</h2>
           <button
             onClick={() => navigate('/')}
             className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-all"
@@ -122,19 +178,21 @@ function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Product Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+            {/* Images Section */}
             <div>
               <div className="bg-gray-100 rounded-lg overflow-hidden mb-4 flex items-center justify-center" style={{ height: '500px' }}>
                 <img
-                  src={product.images[selectedImage]}
+                  src={product.images?.[selectedImage] || '/placeholder.png'}
                   alt={product.name}
                   className="max-w-full max-h-full object-contain"
                 />
               </div>
 
               <div className="grid grid-cols-4 gap-3 mb-6">
-                {product.images.map((image, index) => (
+                {product.images?.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -163,58 +221,73 @@ function ProductDetailPage() {
               </div>
             </div>
 
+            {/* Product Info Section */}
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-4">{product.name}</h1>
 
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-lg">
                   <span className="font-semibold">
-                    {reviews.length > 0 ? averageRating : product.rating}
+                    {reviews.length > 0 ? averageRating : (product.rating || 4.5)}
                   </span>
                   <Star size={16} fill="white" />
                 </div>
                 <span className="text-gray-600">
-                  {reviews.length > 0 ? `${reviews.length} Reviews` : `${product.reviewsCount.toLocaleString()} Ratings & Reviews`}
+                  {reviews.length > 0 ? `${reviews.length} Reviews` : 'Be the first to review'}
                 </span>
               </div>
 
+              {/* Pricing */}
               <div className="mb-6">
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-green-600 font-semibold text-lg">
-                    Extra ₹{(product.originalPrice - product.price).toLocaleString()} off
-                  </span>
-                </div>
+                {product.original_price && product.original_price > product.price && (
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <span className="text-green-600 font-semibold text-lg">
+                      Extra ₹{(product.original_price - product.price).toLocaleString()} off
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-baseline gap-4">
                   <span className="text-4xl font-bold text-gray-900">
-                    ₹{product.price.toLocaleString()}
+                    ₹{product.price?.toLocaleString()}
                   </span>
-                  <span className="text-xl text-gray-500 line-through">
-                    ₹{product.originalPrice.toLocaleString()}
-                  </span>
-                  <span className="text-xl text-green-600 font-semibold">
-                    {product.discount}% off
-                  </span>
+                  {product.original_price && (
+                    <span className="text-xl text-gray-500 line-through">
+                      ₹{product.original_price.toLocaleString()}
+                    </span>
+                  )}
+                  {product.discount > 0 && (
+                    <span className="text-xl text-green-600 font-semibold">
+                      {product.discount}% off
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">Available Offers</h3>
-                <div className="space-y-2">
-                  {product.offers.map((offer, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                      <p className="text-gray-700 text-sm">{offer}</p>
-                    </div>
-                  ))}
+              {/* Offers */}
+              {product.offers && product.offers.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3">Available Offers</h3>
+                  <div className="space-y-2">
+                    {product.offers.map((offer, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                        <p className="text-gray-700 text-sm">{offer}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">Description</h3>
-                <p className="text-gray-700 leading-relaxed">{product.description}</p>
-              </div>
+              {/* Description */}
+              {product.description && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3">Description</h3>
+                  <p className="text-gray-700 leading-relaxed">{product.description}</p>
+                </div>
+              )}
 
-              {product.colors.length > 0 && (
+              {/* Color Options */}
+              {product.colors && product.colors.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-800 mb-3">Color</h3>
                   <div className="flex flex-wrap gap-3">
@@ -235,7 +308,8 @@ function ProductDetailPage() {
                 </div>
               )}
 
-              {product.storage.length > 0 && (
+              {/* Storage Options */}
+              {product.storage && product.storage.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-800 mb-3">Storage</h3>
                   <div className="flex flex-wrap gap-3">
@@ -256,7 +330,8 @@ function ProductDetailPage() {
                 </div>
               )}
 
-              {product.ram.length > 0 && (
+              {/* RAM Options */}
+              {product.ram && product.ram.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-800 mb-3">RAM</h3>
                   <div className="flex flex-wrap gap-3">
@@ -280,6 +355,7 @@ function ProductDetailPage() {
           </div>
         </div>
 
+        {/* Reviews Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Ratings & Reviews</h2>
@@ -296,9 +372,7 @@ function ProductDetailPage() {
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Share Your Experience</h3>
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Your Name
-                  </label>
+                  <label className="block text-gray-700 font-medium mb-2">Your Name</label>
                   <input
                     type="text"
                     value={reviewForm.userName}
@@ -310,18 +384,14 @@ function ProductDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Rating
-                  </label>
+                  <label className="block text-gray-700 font-medium mb-2">Rating</label>
                   {renderStars(reviewForm.rating, 24, true, (rating) =>
                     setReviewForm({ ...reviewForm, rating })
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Your Review
-                  </label>
+                  <label className="block text-gray-700 font-medium mb-2">Your Review</label>
                   <textarea
                     value={reviewForm.reviewText}
                     onChange={(e) => setReviewForm({ ...reviewForm, reviewText: e.target.value })}
@@ -386,19 +456,20 @@ function ProductDetailPage() {
           )}
         </div>
 
+        {/* Similar Products Section */}
         {similarProducts.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Similar Products</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
               {similarProducts.map((similarProduct) => (
                 <div
-                  key={similarProduct.id}
-                  onClick={() => handleProductClick(similarProduct.id)}
+                  key={similarProduct._id || similarProduct.id}
+                  onClick={() => handleProductClick(similarProduct.product_id || similarProduct._id)}
                   className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all cursor-pointer group"
                 >
                   <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden flex items-center justify-center p-4">
                     <img
-                      src={similarProduct.images[0]}
+                      src={similarProduct.images?.[0] || '/placeholder.png'}
                       alt={similarProduct.name}
                       className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform"
                     />
@@ -409,20 +480,26 @@ function ProductDetailPage() {
                     </h3>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg font-bold text-orange-600">
-                        ₹{similarProduct.price.toLocaleString()}
+                        ₹{similarProduct.price?.toLocaleString()}
                       </span>
-                      <span className="text-sm text-gray-500 line-through">
-                        ₹{similarProduct.originalPrice.toLocaleString()}
-                      </span>
+                      {similarProduct.original_price && (
+                        <span className="text-sm text-gray-500 line-through">
+                          ₹{similarProduct.original_price.toLocaleString()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
-                        <span>{similarProduct.rating}</span>
-                        <Star size={10} fill="white" />
-                      </div>
-                      <span className="text-xs font-semibold text-green-600">
-                        {similarProduct.discount}% OFF
-                      </span>
+                      {similarProduct.rating && (
+                        <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded text-xs">
+                          <span>{similarProduct.rating}</span>
+                          <Star size={10} fill="white" />
+                        </div>
+                      )}
+                      {similarProduct.discount > 0 && (
+                        <span className="text-xs font-semibold text-green-600">
+                          {similarProduct.discount}% OFF
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

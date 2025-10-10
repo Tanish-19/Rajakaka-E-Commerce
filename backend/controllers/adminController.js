@@ -1,160 +1,148 @@
-// controllers/adminController.js
 import Admin from '../models/Admin.js';
+import Product from '../models/Product.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '7d'
+const generateToken = (adminId) => {
+  return jwt.sign({ adminId }, process.env.JWT_SECRET || 'your-secret-key', {
+    expiresIn: '30d'
   });
 };
 
-// @desc    Admin Login
-// @route   POST /api/admin/login
-// @access  Public
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
-
-    const admin = await Admin.findOne({ email });
-
+    const { username, password } = req.body;
+    const admin = await Admin.findOne({ username });
+    
     if (!admin) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await admin.comparePassword(password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-
-    admin.lastLogin = Date.now();
-    await admin.save();
 
     const token = generateToken(admin._id);
-
-    res.status(200).json({
+    res.json({
       success: true,
-      message: 'Login successful',
       token,
-      admin: {
-        id: admin._id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role
-      }
+      admin: { id: admin._id, username: admin.username }
     });
-
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during login',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error logging in' });
   }
 };
 
-// @desc    Register new admin
-// @route   POST /api/admin/register
-// @access  Public
-export const register = async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
-
-    const existingAdmin = await Admin.findOne({ email });
-
-    if (existingAdmin) {
-      return res.status(400).json({
-        success: false,
-        message: 'Admin with this email already exists'
-      });
-    }
-
-    const admin = await Admin.create({
-      email,
-      password,
-      name: name || 'Admin'
-    });
-
-    const token = generateToken(admin._id);
-
-    res.status(201).json({
-      success: true,
-      message: 'Admin registered successfully',
-      token,
-      admin: {
-        id: admin._id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role
-      }
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during registration',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Verify token
-// @route   GET /api/admin/verify
-// @access  Protected
 export const verifyToken = async (req, res) => {
   try {
-    res.status(200).json({
-      success: true,
-      admin: req.admin
+    const admin = await Admin.findById(req.adminId).select('-password');
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+    res.json({ success: true, admin: { id: admin._id, username: admin.username } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error verifying token' });
+  }
+};
+
+export const addProduct = async (req, res) => {
+  try {
+    // Extract product data from request body
+    const productData = { ...req.body };
+    
+    // Auto-generate product_id if not provided
+    if (!productData.product_id || productData.product_id.trim() === '') {
+      const prefix = getCategoryPrefix(productData.category);
+      const nextId = await getNextSequenceValue(productData.category);
+      productData.product_id = `${prefix}${String(nextId).padStart(5, '0')}`;
+    }
+    
+    // Auto-calculate discount if not provided
+    if (!productData.discount || productData.discount === 0) {
+      if (productData.price && productData.original_price) {
+        const discountPercentage = Math.round(
+          ((productData.original_price - productData.price) / productData.original_price) * 100
+        );
+        productData.discount = discountPercentage > 0 ? discountPercentage : 0;
+      }
+    }
+    
+    const product = new Product(productData);
+    await product.save();
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Product added successfully', 
+      product 
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
+    console.error('Add product error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error adding product', 
+      error: error.message 
     });
   }
 };
 
-// @desc    Get admin profile
-// @route   GET /api/admin/profile
-// @access  Protected
-export const getProfile = async (req, res) => {
+// Helper function to get category prefix
+function getCategoryPrefix(category) {
+  const prefixMap = {
+    'mobiles': 'MOB',
+    'tablets': 'TAB',
+    'tvs': 'TV',
+    'appliances': 'APP',
+    'electronics': 'ELEC'
+  };
+  return prefixMap[category] || 'PROD';
+}
+
+// Helper function to get next sequence value for a category
+async function getNextSequenceValue(category) {
+  const Counter = mongoose.model('Counter', new mongoose.Schema({
+    _id: String,
+    sequence_value: { type: Number, default: 0 }
+  }));
+  
+  const result = await Counter.findOneAndUpdate(
+    { _id: `${category}_id` },
+    { $inc: { sequence_value: 1 } },
+    { new: true, upsert: true }
+  );
+  
+  return result.sequence_value;
+}
+
+export const getProducts = async (req, res) => {
   try {
-    const admin = await Admin.findById(req.admin._id).select('-password');
-    
-    res.status(200).json({
-      success: true,
-      admin
-    });
+    const products = await Product.find();
+    res.json({ success: true, count: products.length, products });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error fetching products' });
+  }
+};
+
+export const updateProduct = async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+    res.json({ success: true, message: 'Product updated successfully', product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error updating product' });
+  }
+};
+
+export const deleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+    res.json({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error deleting product' });
   }
 };

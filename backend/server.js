@@ -7,7 +7,9 @@ import dotenv from 'dotenv';
 import adminRoutes from './routes/adminRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import userRoutes from './routes/userRoutes.js'
+import userRoutes from './routes/userRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 dotenv.config();
 
@@ -30,7 +32,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rajakaka'
 app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes); // ADD THIS
-app.use('/api', userRoutes)
+app.use('/api', userRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {

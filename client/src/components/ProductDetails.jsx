@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, ShoppingCart, TrendingUp, User } from 'lucide-react';
+import { useAuth } from './contexts/AuthContext';
+import Navbar from './Navbar';
 
 const API_URL = 'http://localhost:5001/api/products';
+const API_BASE_URL = 'http://localhost:5001/api';
 
 function ProductDetailPage() {
+  const { isLoggedIn, user } = useAuth(); // Access authentication state
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
@@ -28,6 +32,13 @@ function ProductDetailPage() {
     window.scrollTo(0, 0);
     fetchProductDetails();
   }, [id]);
+
+  // Pre-fill user name in review form if logged in
+  useEffect(() => {
+    if (isLoggedIn && user && user.name) {
+      setReviewForm(prev => ({ ...prev, userName: user.name }));
+    }
+  }, [isLoggedIn, user]);
 
   const fetchProductDetails = async () => {
     try {
@@ -118,12 +129,119 @@ function ProductDetailPage() {
     localStorage.setItem(`reviews_${id}`, JSON.stringify(updatedReviews));
 
     setReviewForm({
-      userName: '',
+      userName: isLoggedIn && user ? user.name : '',
       rating: 5,
       reviewText: ''
     });
     setShowReviewForm(false);
+    alert('Thank you for your review!');
   };
+
+  const handleAddToCart = async () => {
+  if (!isLoggedIn) {
+    alert('Please login to add items to cart');
+    return;
+  }
+
+  console.log('=== ADD TO CART DEBUG ===');
+  console.log('Product:', {
+    productId: product._id,
+    product_id: product.product_id || id,
+    name: product.name,
+    price: product.price,
+    selectedColor,
+    selectedRam,
+    selectedStorage
+  });
+
+  try {
+    const token = localStorage.getItem('token');
+    console.log('Token:', token);
+    
+    const requestBody = {
+      productId: product._id,
+      product_id: product.product_id || id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      image: product.images?.[0],
+      selectedColor,
+      selectedRam,
+      selectedStorage
+    };
+
+    console.log('Request body:', requestBody);
+    
+    const response = await fetch(`${API_BASE_URL}/cart/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+    console.log('Response:', data);
+
+    if (data.success) {
+      alert('Product added to cart!');
+      // Optionally refresh cart or update cart count
+    } else {
+      alert(data.message || 'Failed to add to cart');
+    }
+  } catch (error) {
+    console.error('Add to cart error:', error);
+    alert('Error adding to cart');
+  }
+};
+
+  const handleBuyNow = async () => {
+  if (!isLoggedIn) {
+    alert('Please login to continue with purchase');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    
+    const response = await fetch(`${API_BASE_URL}/orders/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        items: [{
+          productId: product._id,
+          product_id: product.product_id || id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          image: product.images?.[0],
+          selectedColor,
+          selectedRam,
+          selectedStorage
+        }],
+        fromCart: false,
+        paymentMethod: 'COD',
+        deliveryCharge: 40
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert('Order placed successfully!');
+      navigate(`/orders/${data.data._id}`);
+    } else {
+      alert(data.message || 'Failed to place order');
+    }
+  } catch (error) {
+    console.error('Buy now error:', error);
+    alert('Error placing order');
+  }
+};
 
   const renderStars = (rating, size = 16, interactive = false, onRatingChange = null) => {
     return (
@@ -150,10 +268,13 @@ function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading product details...</p>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading product details...</p>
+          </div>
         </div>
       </div>
     );
@@ -161,15 +282,18 @@ function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center bg-white p-10 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">{error || 'Product not found'}</h2>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-all"
-          >
-            Go to Home
-          </button>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center bg-white p-10 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{error || 'Product not found'}</h2>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-all"
+            >
+              Go to Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -177,6 +301,8 @@ function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Product Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
@@ -187,34 +313,42 @@ function ProductDetailPage() {
                 <img
                   src={product.images?.[selectedImage] || '/placeholder.png'}
                   alt={product.name}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-full object-contain p-4"
                 />
               </div>
 
-              <div className="grid grid-cols-4 gap-3 mb-6">
-                {product.images?.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`border-2 rounded-lg overflow-hidden transition-all ${
-                      selectedImage === index ? 'border-orange-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-20 object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+              {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-3 mb-6">
+                  {product.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={`border-2 rounded-lg overflow-hidden transition-all ${
+                        selectedImage === index ? 'border-orange-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} ${index + 1}`}
+                        className="w-full h-20 object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex gap-4">
-                <button className="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-all flex items-center justify-center gap-2 shadow-md">
+                <button 
+                  onClick={handleAddToCart}
+                  className="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                >
                   <ShoppingCart size={20} />
                   ADD TO CART
                 </button>
-                <button className="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md">
+                <button 
+                  onClick={handleBuyNow}
+                  className="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                >
                   <TrendingUp size={20} />
                   BUY NOW
                 </button>
@@ -269,7 +403,7 @@ function ProductDetailPage() {
                   <h3 className="font-semibold text-gray-800 mb-3">Available Offers</h3>
                   <div className="space-y-2">
                     {product.offers.map((offer, index) => (
-                      <div key={index} className="flex items-start gap-3">
+                      <div key={index} className="flex items-start gap-3 bg-green-50 p-3 rounded-lg">
                         <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                         <p className="text-gray-700 text-sm">{offer}</p>
                       </div>
@@ -289,7 +423,7 @@ function ProductDetailPage() {
               {/* Color Options */}
               {product.colors && product.colors.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3">Color</h3>
+                  <h3 className="font-semibold text-gray-800 mb-3">Color: <span className="text-orange-600">{selectedColor}</span></h3>
                   <div className="flex flex-wrap gap-3">
                     {product.colors.map((color) => (
                       <button
@@ -297,7 +431,7 @@ function ProductDetailPage() {
                         onClick={() => setSelectedColor(color)}
                         className={`px-4 py-2 rounded-lg border-2 transition-all ${
                           selectedColor === color
-                            ? 'border-blue-500 bg-blue-50 text-blue-600'
+                            ? 'border-orange-500 bg-orange-50 text-orange-600 font-semibold'
                             : 'border-gray-300 hover:border-gray-400'
                         }`}
                       >
@@ -311,7 +445,7 @@ function ProductDetailPage() {
               {/* Storage Options */}
               {product.storage && product.storage.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3">Storage</h3>
+                  <h3 className="font-semibold text-gray-800 mb-3">Storage: <span className="text-orange-600">{selectedStorage}</span></h3>
                   <div className="flex flex-wrap gap-3">
                     {product.storage.map((storage) => (
                       <button
@@ -319,7 +453,7 @@ function ProductDetailPage() {
                         onClick={() => setSelectedStorage(storage)}
                         className={`px-4 py-2 rounded-lg border-2 transition-all ${
                           selectedStorage === storage
-                            ? 'border-blue-500 bg-blue-50 text-blue-600'
+                            ? 'border-orange-500 bg-orange-50 text-orange-600 font-semibold'
                             : 'border-gray-300 hover:border-gray-400'
                         }`}
                       >
@@ -333,7 +467,7 @@ function ProductDetailPage() {
               {/* RAM Options */}
               {product.ram && product.ram.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-3">RAM</h3>
+                  <h3 className="font-semibold text-gray-800 mb-3">RAM: <span className="text-orange-600">{selectedRam}</span></h3>
                   <div className="flex flex-wrap gap-3">
                     {product.ram.map((ram) => (
                       <button
@@ -341,7 +475,7 @@ function ProductDetailPage() {
                         onClick={() => setSelectedRam(ram)}
                         className={`px-4 py-2 rounded-lg border-2 transition-all ${
                           selectedRam === ram
-                            ? 'border-blue-500 bg-blue-50 text-blue-600'
+                            ? 'border-orange-500 bg-orange-50 text-orange-600 font-semibold'
                             : 'border-gray-300 hover:border-gray-400'
                         }`}
                       >
@@ -360,7 +494,13 @@ function ProductDetailPage() {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Ratings & Reviews</h2>
             <button
-              onClick={() => setShowReviewForm(!showReviewForm)}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  alert('Please login to write a review');
+                  return;
+                }
+                setShowReviewForm(!showReviewForm);
+              }}
               className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-all font-semibold"
             >
               {showReviewForm ? 'Cancel' : 'Write a Review'}
@@ -380,6 +520,7 @@ function ProductDetailPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Enter your name"
                     required
+                    readOnly={isLoggedIn && user}
                   />
                 </div>
 
@@ -451,6 +592,7 @@ function ProductDetailPage() {
             </div>
           ) : (
             <div className="text-center py-8">
+              <Star className="mx-auto text-gray-400 mb-3" size={48} />
               <p className="text-gray-500 text-lg">No reviews yet. Be the first to review this product!</p>
             </div>
           )}
